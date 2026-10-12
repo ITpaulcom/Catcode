@@ -1,0 +1,16 @@
+{
+ "format": "catcoder-plugin-index",
+ "updatedAt": "2026-10-12T21:42:27.439Z",
+ "plugins": [
+  {
+   "id": "catcoder-core-engine-fixes",
+   "name": "Catcoder Core Engine Fixes",
+   "version": "0.2.0",
+   "description": "Überwachung und Steuerung der Catcoder Core Engine: Planning-Loops erkennen, Review-Blockaden lösen, Agent-Delegation protokollieren.",
+   "author": "ITpaulcom",
+   "icon": "activity",
+   "file": "catcoder-core-engine-fixes.ccplugin.json",
+   "updatedAt": "2026-10-12T21:42:27.439Z"
+  }
+ ]
+}

@@ -1,0 +1,54 @@
+# Öffentlicher Update-Kanal von Catcoder: Liegt ein neuer Installer in release/, wird daraus ein Release mit
+# latest.json – davon aktualisiert sich jede Catcoder-Installation (Updater: releases/latest/download/latest.json).
+# Braucht keine Geheimnisse: der Workflow schreibt nur in dieses Repository.
+name: Catcoder-Release
+on:
+  push:
+    branches: [main]
+    paths: ["release/**"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          exe=$(ls release/Catcoder-Setup-*.exe | sort -V | tail -1)
+          name=$(basename "$exe"); ver=${name#Catcoder-Setup-}; ver=${ver%.exe}
+          tag="v$ver"; web="https://github.com/${GITHUB_REPOSITORY}"
+          sum=$(sha256sum "$exe" | cut -d' ' -f1)
+          if [ -f "$exe.sha256" ] && [ "$(cut -d' ' -f1 "$exe.sha256")" != "$sum" ]; then echo "::error::Prüfsumme passt nicht"; exit 1; fi
+          echo "$sum  $name" > "$exe.sha256"
+          cp "$exe" Catcoder-Setup.exe
+          notes=release/notes.md; [ -f "$notes" ] || echo "" > "$notes"
+          node -e '
+            const fs = require("fs"); const [ver, name, web, tag, exe, sum, notes] = process.argv.slice(1);
+            fs.writeFileSync("latest.json", JSON.stringify({ version: ver, file: name, url: `${web}/releases/download/${tag}/${name}`, sha256: sum,
+              size: fs.statSync(exe).size, notes: fs.readFileSync(notes, "utf8").slice(0, 6000), page: `${web}/releases/tag/${tag}`, published: new Date().toISOString() }, null, 1));
+          ' "$ver" "$name" "$web" "$tag" "$exe" "$sum" "$notes"
+          {
+            echo "## Catcoder $ver"
+            echo
+            echo "**Installieren:** unten bei *Assets* auf \`Catcoder-Setup.exe\` klicken und ausführen (Windows 10/11, keine Adminrechte nötig)."
+            echo "Windows SmartScreen: „Weitere Informationen“ → „Trotzdem ausführen“."
+            echo
+            echo "Installierte Versionen aktualisieren sich automatisch (Einstellungen → Updates)."
+            echo
+            cat "$notes"
+          } > body.md
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$exe" "$exe.sha256" Catcoder-Setup.exe latest.json --clobber
+            gh release edit "$tag" --notes-file body.md --latest
+          else
+            gh release create "$tag" "$exe" "$exe.sha256" Catcoder-Setup.exe latest.json --title "Catcoder $ver" --notes-file body.md --latest
+          fi
+          # Gegenprobe wie der Updater: ohne Anmeldung erreichbar?
+          code=$(curl -s -o /dev/null -w '%{http_code}' -L "$web/releases/latest/download/latest.json")
+          [ "$code" = 200 ] || { echo "::error::latest.json nicht abrufbar (HTTP $code)"; exit 1; }
+          echo "Veröffentlicht: $web/releases/tag/$tag" | tee -a "$GITHUB_STEP_SUMMARY"

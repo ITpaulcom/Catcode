@@ -1,22 +1,31 @@
-## Änderungen 5.41.0 – Gezielt prüfen, sauber nebeneinander arbeiten, über Nacht durchhalten
+## Änderungen 5.42.0 – Reinraum-Werkstatt, Aufwandsregler im MaxCode-Design, Feinschliff überall
 
-- **Betroffene Tests (aus MaxCode).** Nach einer Änderung prüft Catcoder genau die Tests, die davon abhängen – gefunden
-  über die Import-Kette (auch Python-Pakete), Textverweise und Einstiegsdateien wie den Server, den Tests per Pfad
-  starten. Statt aller Tests (langsam) oder gar keiner (riskant) laufen die nächsten fünf; Hilfsdateien im Testordner
-  zählen nicht als Test. Der Testläufer wird erkannt (vitest, jest, mocha, Playwright, `node --test`, pytest).
-  Agents können es auch selbst nutzen: `check_project` mit `kind=affected`.
-- **Kein falsches „steht oben“ mehr.** Las ein Agent eine Datei erneut, antwortete Catcoder „unverändert, steht oben“ –
-  auch wenn die frühere Ausgabe inzwischen gekürzt oder verdichtet war. Der Agent sah den Inhalt dann gar nicht mehr und
-  las wieder und wieder. Nach dem Kürzen und Verdichten kommt jetzt wieder der Inhalt.
-- **Warnung bei gleichzeitigem Ändern.** Ändert ein Chat eine Datei, die ein anderer Chat im selben Projekt in den
-  letzten 20 Minuten geändert hat, bekommt er sofort einen Hinweis (wer, wann) und liest sie frisch, statt die fremde
-  Änderung zu überschreiben. Teammitglieder desselben Ziels sind ausgenommen (die stimmen sich ohnehin ab).
-- **Über Nacht durchhalten.** Sind die Modelle überlastet oder ist das Abo-Limit erreicht, versucht ein Ziel es jetzt bis
-  zu 12 Stunden lang (1, 2, 5, 10, 15 min, dann alle 30 min) statt nach einer Stunde aufzugeben – und nennt der Anbieter
-  die Rücksetzzeit (Claude-/ChatGPT-Abo), geht es genau dann weiter. „Usage limit reached“ gilt jetzt auch bei Zielen als
-  vorübergehend.
-- **Tempo-Diagnose zeigt den echten Start:** wie lange die Windows-App bis zur fertigen Engine brauchte (aus
-  `launcher.log`), wann die Engine selbst bereit war – mit Hinweis, wenn der Start langsam ist (oft der Virenscanner).
-- Gemessen mit großem Bestand (1410 Chats, 202 Ziele, 94 MB): Engine in 0,3 s bereit, alle Abfragen unter 15 ms,
-  Oberfläche nach 1,1 s bedienbar (danach 0,3 s).
-- In der Team-Anzeige schläft eine kleine Katze, solange niemand arbeitet.
+- **Reinraum-Werkstatt (Clean-Room-Nachbau).** Programme und Spiele verstehen, sauber neu bauen, verbessern, nach Rust
+  portieren – oder mehrere zu etwas Neuem **fusionieren** („nimm Spiel A und Spiel B und mach daraus …“, „baue CatCut
+  nach und mach den Export schneller“). Start in der Zentrale (Kolben-Symbol bei den Zielen) oder einfach im Hauptchat.
+  - **Erkunden:** Je Original schreibt ein Analyst eine Verhaltens-Spezifikation (`spec/<name>.md`): Funktionen,
+    Bedienung, Spielmechanik, Dateiformate, Abnahme-Tests, Verbesserungsideen. Das neue Werkzeug `reinraum` liest
+    Programme, ohne sie auszuführen: Windows-/Linux-/Mac-Programme (Architektur, Oberfläche, eingebundene Bibliotheken und
+    Funktionen → Grafik, Gamepad, Audio, Netzwerk …), Versionsangaben, Packer, Texte und Dateiformate sowie Spiel-Engines
+    (Unity, Godot, Unreal, GameMaker, RPG Maker, LÖVE, Electron, Ren'Py, Qt) und Lizenzhinweise.
+  - **Mauer (für einen sauberen Neubau):** Leitung, Bau-Team und Prüfer sehen die Originale nie – weder über
+    Dateiwerkzeuge noch über Befehle. Jeder Versuch wird abgelehnt und protokolliert. Gebaut wird nur nach der
+    Spezifikation.
+  - **Spiele fusionieren (Mauer aus):** Bei einer Fusion ist die Mauer standardmäßig aus – das ganze Team nutzt die
+    Originale direkt: Skripte und Logik portieren, Level und Daten übernehmen, Grafiken, Sounds und Schriften
+    wiederverwenden und zu einem neuen Spiel verschmelzen. Jede übernommene Datei steht in `HERKUNFT.md`. Der Schalter
+    „Mauer“ im Dialog (oder `mauer` im Hauptchat) stellt es für jeden Modus um.
+  - **Tiefere Analyse:** Klassen, Methoden und Texte aus .NET-Programmen und Unity-Spielen (Assembly-CSharp), Archive
+    auflisten und entpacken (ZIP/APK/JAR/.love, Electron .asar, Godot .pck), GameMaker-Namen und -Texte, RPG-Maker-Daten,
+    IL2CPP-Bezeichner und **Fundstellen**: wo Logik, Level, Grafik, Audio und Schriften liegen.
+  - **Neu bauen:** standardmäßig in Rust (Cargo-Projekt mit Tests; Spiele z. B. mit Bevy/macroquad, Desktop mit egui) –
+    Rust wird bei Bedarf automatisch eingerichtet. Andere Sprachen sind wählbar.
+  - **Nachvollziehbar:** `REINRAUM.md` hält Verfahren, Quellen, Spezifikationen und abgelehnte Zugriffe fest. Mit Mauer
+    wird nur Verhalten übernommen; ohne Mauer ist das Ergebnis für den eigenen Gebrauch (Weitergabe nur mit Rechten an den
+    Originalen). Kopierschutz, DRM und verschlüsselte Archive werden nie umgangen.
+- **Aufwandsregler im MaxCode-Design** mit vier Stufen: Sparsam (grün, Blatt) · Mittel · Hoch (Funken, lila Glühen) ·
+  Maximal (Plasma, Schockwelle, Blitze, glühender Rand ums Eingabefeld). Beim Überfahren oder per Tastatur zeigt ein
+  Schild Stufe und Bedeutung. Der Regler springt beim Umschalten nicht mehr seitlich; frühere Einstellungen bleiben gültig.
+- **Feinschliff:** gleichnamige Projekte zeigen ihren Ordnernamen; das Suchfeld der Einstellungen ragt nicht mehr
+  heraus; Schalter sind im dunklen System-Design gut sichtbar; die Projektansicht passt auf schmale Fenster; Vorschauen
+  von Zielen zeigen keine Markdown-Reste mehr; die schlafende Katze sitzt sauber in der Team-Anzeige.

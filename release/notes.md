@@ -1,4 +1,5 @@
-## Änderungen 5.43.1 – Labor flüssig
+## Änderungen 5.43.2 – Studios in der Seitenleiste, keine Überlappungen
 
-- **Labor-Geräte laufen flüssig.** Statt die Bilder reihum als base64-Text abzufragen, schickt die Engine jedes neue Bild jedes Geräts sofort als Binärbild über eine WebSocket-Leitung (`/labor/live`); der Browser dekodiert im Hintergrund und zeigt je Gerät immer nur das neueste Bild – kein Stau, keine Ruckler. Bildrate auf dem Arbeitsplatz 30 statt ~6–12 Bilder/s je Gerät, das groß geöffnete Gerät 60 Bilder/s. Gemessen mit drei Geräten und einer Animation: vorher ~17, jetzt ~28 Bilder/s je Gerät auf schwacher Testhardware.
-- **Bedienung ohne Verzögerung:** Tippen, Wischen und Tastatur gehen über dieselbe Leitung (je Gerät in richtiger Reihenfolge), Ziehen mit ~60 Updates/s statt 25. Fällt die Leitung aus, übernimmt automatisch der alte Weg, bis sie wieder steht.
+- **Studios** (neu in der Seitenleiste): Reverse Engineering (Reinraum-Werkstatt: Nachbau, Verbessern, Fusion, Rust-Port), Kampagnen-Studio, Motion-Studio und Geräte-Labor an einem Ort – mit laufenden und letzten Arbeiten. Auch über die Suche (Strg+K → „Reverse“).
+- **Keine Überlappungen mehr:** lange Projektnamen im Zentrale-Kopf, in „Ziele“ und „Team“ werden gekürzt statt umzubrechen; Projektseite: Titel und Knöpfe überlagern sich nicht mehr (Knöpfe rutschen bei wenig Platz in eine eigene Zeile); Panel (Plan/Dateien/Browser) und Menüs im Design „Aurora“ sind deckend – der Chat scheint nicht mehr durch.
+- **Kompakter:** Kopf-Knöpfe der Zentrale bei mittlerer Fensterbreite nur mit Symbol; Sprechen- und Notiz-Knopf kleiner und dezent, Listen und die Eingabe im Ziel-Blatt halten ihnen Platz frei.

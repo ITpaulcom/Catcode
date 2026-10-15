@@ -1,5 +1,7 @@
-## Änderungen 5.43.4 – Steam mit App-Icons, keine doppelten Spiele und Meldungen
+## Änderungen 5.43.5 – Projekte und Fusion laufen auch bei Anbieter-Ausfall durch
 
-- **Steam-Auswahl:** jedes Spiel nur noch einmal (Steam trägt denselben Bibliotheksordner oft mehrfach in anderer Schreibweise ein); statt Bannern das **App-Icon** des Spiels – aus Steams Bild-Cache oder direkt aus der Spiel-.exe gelesen; kompakte Liste.
-- **Keine doppelten Meldungen:** gleiche Fehlermeldungen und Hinweise erscheinen nur einmal (bei Wiederholung mit „×2“ und neu startender Anzeigedauer) – z. B. im Labor, wenn mehrere Geräte denselben Fehler melden; gleiche Benachrichtigungen werden nicht gestapelt.
-- **„Failed to fetch dynamically imported module“ behoben:** Konnte ein Teil der Oberfläche (z. B. Kampagnen-Studio) einmal nicht geladen werden – etwa direkt nach einem Update –, merkte sich der Browser den Fehler. Jetzt wird automatisch neu versucht; technische Browser-Meldungen erscheinen auf Deutsch mit Hinweis.
+- **Ursache gefunden:** Fiel das eingestellte Modell aus – z. B. **DeepSeek „402 Insufficient Balance“** (Guthaben leer) und dahinter ein lokales Ollama, das nicht läuft (ECONNREFUSED) –, wich Catcoder nur innerhalb der eingestellten Kette aus. War sie leer, brach die Aufgabe ab („Kein Modell erreichbar“) oder wartete eine Stunde auf einen neuen Versuch. Genau das stoppte Bauen und Fusion.
+- **Jetzt:** Anbieter mit leerem Guthaben werden eine Stunde lang mit **allen** ihren Modellen übersprungen, ein nicht laufender lokaler Server 3 Minuten. Ist die Kette erschöpft, übernehmen automatisch die Standard-Kette (Einstellungen → Modelle) und die besten Gratis-Modelle – auch für Briefing und Prüfung. In Zielen/Projekten gilt das auch bei vorübergehenden Störungen; im direkten Chat wird bei Überlast wie bisher später mit dem gewählten Modell neu versucht.
+- Einmalige, klare Meldung, wenn ein Guthaben aufgebraucht ist – mit dem Hinweis, dass es ohne Unterbrechung weitergeht.
+- Verbindungsfehler nennen jetzt die eigentliche Ursache (z. B. ECONNREFUSED statt nur „fetch failed“).
+- Neuer Test `ausfall-test`: das ganze Team auf einem Anbieter ohne Guthaben, dahinter ein ausgeschalteter lokaler Server – Auftrag, Projekt und Spiele-Fusion laufen vollständig durch (mit dem alten Verhalten: keine Antwort, Projekt wird nie fertig).

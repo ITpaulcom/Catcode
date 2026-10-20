@@ -1,7 +1,8 @@
-## Änderungen 5.43.5 – Projekte und Fusion laufen auch bei Anbieter-Ausfall durch
+## Änderungen 5.43.6 – Spiele werden wirklich bedient geprüft, Coder testet selbst
 
-- **Ursache gefunden:** Fiel das eingestellte Modell aus – z. B. **DeepSeek „402 Insufficient Balance“** (Guthaben leer) und dahinter ein lokales Ollama, das nicht läuft (ECONNREFUSED) –, wich Catcoder nur innerhalb der eingestellten Kette aus. War sie leer, brach die Aufgabe ab („Kein Modell erreichbar“) oder wartete eine Stunde auf einen neuen Versuch. Genau das stoppte Bauen und Fusion.
-- **Jetzt:** Anbieter mit leerem Guthaben werden eine Stunde lang mit **allen** ihren Modellen übersprungen, ein nicht laufender lokaler Server 3 Minuten. Ist die Kette erschöpft, übernehmen automatisch die Standard-Kette (Einstellungen → Modelle) und die besten Gratis-Modelle – auch für Briefing und Prüfung. In Zielen/Projekten gilt das auch bei vorübergehenden Störungen; im direkten Chat wird bei Überlast wie bisher später mit dem gewählten Modell neu versucht.
-- Einmalige, klare Meldung, wenn ein Guthaben aufgebraucht ist – mit dem Hinweis, dass es ohne Unterbrechung weitergeht.
-- Verbindungsfehler nennen jetzt die eigentliche Ursache (z. B. ECONNREFUSED statt nur „fetch failed“).
-- Neuer Test `ausfall-test`: das ganze Team auf einem Anbieter ohne Guthaben, dahinter ein ausgeschalteter lokaler Server – Auftrag, Projekt und Spiele-Fusion laufen vollständig durch (mit dem alten Verhalten: keine Antwort, Projekt wird nie fertig).
+- **Ursache gefunden:** Ein echt gebautes Snake-Spiel wurde als „fertig und geprüft“ gemeldet, startete aber im „Game Over“-Zustand und bewegte sich nie. Die Prüfung hatte nur Code und Bilder angesehen, nie gespielt.
+- **Bedienprobe:** Spiele und interaktive Seiten werden bei der Prüfung echt bedient – Startzustand, Bewegung, Klicks, Pfeiltasten, WASD, Leertaste, Enter, Neustart-Knopf, Konsolenfehler. Ein Fehler ist nur noch Fehler, wenn er wirklich auftritt (ein Spiel, das ohne Steuerung an der Wand endet, ist korrekt erkannt).
+- **Selbsttest für den Coder:** Neues Werkzeug `labor action=play`. Nach einer nicht bestandenen Bedienprobe prüft der Coder seinen Fix selbst, bis „BESTANDEN“ kommt – statt blind zu flicken.
+- **Spiele aus einer Hand:** Kleine Spiele werden nicht mehr in parallele Teile zerlegt, deren IDs und Overlays nicht zusammenpassen. Bleibt ein Spiel nach mehreren Runden kaputt, wird die Logik einmal stimmig neu geschrieben.
+- **Keine Hänger durch grübelnde Modelle:** Ein Modell, das nur nachdenkt und nie handelt, wird nach spätestens 2,5–4 Minuten gebremst und nach zwei Bremsungen durch ein anderes ersetzt (vorher hing ein Aufruf bis zu 13 Minuten).
+- **Getestet:** Snake-Spiel mit echtem Gratis-Modell gebaut, geprüft und von einem Test-Bot gespielt (frisst, Punkte steigen, Neustart klappt). Zusätzlich To-do-Webseite aus einem Guss gebaut und ausgeliefert.

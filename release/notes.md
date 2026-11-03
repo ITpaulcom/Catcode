@@ -1,3 +1,7 @@
+## Änderungen 5.47.1 – Sprachassistent: Key-Feld und Link gut sichtbar
+
+- **Kontrast auf der Sprachassistent-Seite:** Der Rahmen des Eingabefelds für den Gemini-Key war in allen Stilen kaum zu sehen (1,4:1 statt mindestens 3:1), der Link „aistudio.google.com/apikey“ in zwei Stilen knapp zu blass. Jetzt hat das Feld denselben gut sichtbaren Rahmen wie die anderen Eingabefelder, der Link ist kräftiger und unterstrichen – geprüft in allen Stilen, hell und dunkel.
+
 ## Änderungen 5.47.0 – Große Projekte laufen durch: gemessen an echten Läufen
 
 Grundlage sind echte Läufe mit der Gratis-Rotation: zweimal dasselbe große Spiel (Jump'n'Run mit 5 Leveln, Gegnern, Editor, Highscores, Sound) – einmal mit 5.46.0, einmal mit dem neuen Stand –, dazu eine Full-Stack-App (Server mit API und Datenbank, danach die Oberfläche) über 4 Etappen samt Neustart mitten im Lauf, und eine Durchsicht des Ablaufs. Gefunden und behoben:

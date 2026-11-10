@@ -1,22 +1,23 @@
-## Änderungen 5.50.0 – Effizienter Harness: weniger Ballast, weniger Runden, weniger Fehlversuche
+## Änderungen 5.51.0 – Dreistufen-Speicher: Riesen-MoE wie DeepSeek V4.1 Flash aus Grafikkarte + Arbeitsspeicher + SSD
 
-Gemessen mit `bench/run.mjs`: 9 Aufgaben (Fehler beheben, Funktion bauen, Umbenennen, große Datei, Fehlersuche, Skript, Code verstehen, Tests schreiben, Browser-Spiel), dasselbe Gratis-Modell, alte und neue Fassung abwechselnd, je 3 Durchgänge (27 Aufgaben je Fassung):
+Modelle, die größer sind als Arbeitsspeicher und Grafikkarte zusammen, laufen jetzt lokal (`lib/speicherplan.mjs`):
 
-| | 5.49.0 | 5.50.0 |
+- **Grafikkarte = Beschleuniger** für alles, was jedes Token braucht: Attention, gemeinsame Experten, Router, Ausgabekopf, KV-Cache – dazu so viele ganze Experten-Schichten, wie noch passen (llama.cpp `--fit`).
+- **Arbeitsspeicher** hält die häufig gebrauchten Experten; gerechnet wird nur auf den **Leistungskernen** (unter Windows nimmt llama.cpp sonst alle Kerne – beim i9-13900HX 24 statt 8; E-Kerne bremsen den Gleichschritt). Erkannt über die CPU-Sets von Windows bzw. sysfs unter Linux, Threads fest auf je einen P-Kern (`-t 8 -C 0x5555 --cpu-strict 1`).
+- **SSD**: das Modell bleibt eingeblendet (mmap), das Betriebssystem lädt seltene Experten nach. Die Engram-Tabelle von DeepSeek V4.1 (110–135 GB) liest llama.cpp zeilenweise von der SSD (`--lazy-mode on`). Ohne Umpacken (`--no-repack` – sonst kopiert llama.cpp die Gewichte in eigenen Speicher: gemessen vom System beendet) und ohne Aufwärmen mit allen Experten (`--no-warmup` – das läse beim Start das ganze Modell). Großer Vorlauf-Block (`-ub 4096`): die Experten wandern je Block einmal zur Grafikkarte.
+- **Vorher sehen, was einen erwartet:** Catcoder liest den Aufbau aus der Tensor-Tabelle der GGUF-Datei (auch aufgeteilte Modelle und Köpfe von Hugging Face, ohne Download) und schätzt das Tempo aus Bytes je Token und Bandbreite je Stufe (Grafikspeicher je Karte, RAM-Takt, SSD-Lesetest). Die Modellliste zeigt die Schätzung je Modell, die Modellhost-Karte den Speicherplan.
+- **DeepSeek V4.1 Flash** in der Modellliste (Unsloth, MIT): UD-Q2_K_XL (335 GB, Benchmark-Mittel 87,5 statt 87,7 bei Q8 – praktisch Originalqualität) und UD-IQ1_S (233 GB, 83,5). Aufgeteilte Modelle laden alle Teile mit Prüfsumme, Platz auf der SSD wird vorher geprüft. Die eingebaute llama.cpp-Fassung (b12079) kennt `deepseek41`, Engram und das DSML-Werkzeugformat.
+- Kürzeres Nachdenken bei Modellen von der SSD (Denk-Budget 320 statt 768 Tokens), damit eine Runde nicht minutenlang nur denkt.
+
+Gemessen (echter llama-server b12079, MoE mit 820 MB, Arbeitsspeicher per cgroup auf 400 MB begrenzt): läuft mit denselben Antworten, 3,1–3,5 Tokens/s statt 40–46 ohne Grenze; ohne `--no-repack` vom System beendet. Daraus kalibriert: Nachladen über mmap erreicht ≈ 15 % der Lese-Rate der SSD.
+
+**Was das für einen Dell G16 7630 heißt** (RTX 4070 Laptop 8 GB / 256 GB/s, 32 GB DDR5-4800, i9-13900HX; Aufbau aus den echten GGUF-Köpfen):
+
+| Modell | Speicherplan | geschätzt |
 |---|---|---|
-| bestanden | 23 von 27 | **26 von 27** |
-| Modell-Runden je Aufgabe | 5,4 | **4,5** |
-| doppelte Werkzeug-Aufrufe | 36 | **15** |
-| Eingabe-Tokens gesamt | 1 976 000 | **1 167 000 (−41 %)** |
-| feste Tokens je Anfrage (System + Werkzeuge) | 7 026 | **4 454 (−37 %)** |
-| ohne das Browser-Spiel: bestanden / Eingabe-Tokens | 23 von 24 / 853 000 | **24 von 24 / 555 000 (−35 %)** |
-| Browser-Spiel bestanden | 0 von 3 | **2 von 3** |
+| DeepSeek V4.1 Flash UD-IQ1_S (233 GB) | Grafikkarte 6,4 GB · RAM 26 GB · SSD 200 GB | 0,4–1,5 Tokens/s, Vorlauf ~1 min je 4 000 neue Tokens |
+| DeepSeek V4.1 Flash UD-Q2_K_XL (335 GB) | Grafikkarte 6,4 GB · RAM 26 GB · SSD 300 GB | 0,2–0,8 Tokens/s |
+| gpt-oss 20B | Grafikkarte 6,1 GB · RAM 5,5 GB | 37–41 Tokens/s |
+| Qwen3.5 9B | ganz auf der Grafikkarte | ~36 Tokens/s |
 
-Die Bedienprobe für das Browser-Spiel hängt am Timing (laufen mehrere Browser gleichzeitig, verpasst sie Bewegungen). Die Bench-Prüfung versucht es deshalb jetzt bis zu dreimal. In einer Nachmessung mit 5.50.0 liefen alle drei gebauten Snake-Spiele, mit 58 000–207 000 statt bis zu 937 000 Tokens.
-
-- **Nur noch die Werkzeuge, die der Auftrag braucht:** Bisher luden Gruppen schon bei Allerweltswörtern: Code-Analyse bei „Test“, „Fehler“ oder „Funktion“, das Geräte-Labor bei „Konsole“, Ausführen/Server bei „node“. Jetzt laden sie nur bei passenden Aufträgen. Reinraum-Analyse, Dateien verschieben, Bibliotheks-Doku, Gedächtnis-Suche und Skill-Dateien kommen auf Abruf, `git` nur in Git-Projekten, das Projektgedächtnis nur bei Projekten mit Karte oder Notizen. Bei einer typischen Coding-Aufgabe sind es 14 statt 22–32 Werkzeuge: 2 250 statt 4 400–5 900 Tokens bei jeder Anfrage. Der komplette feste Teil liegt damit bei etwa 13 500 Zeichen. Zum Vergleich: Allein die System-Prompt-Datei von Codex CLI für GPT-5.2 hat 21 652 Zeichen, ohne Werkzeuge.
-- **Ändern und Prüfen in einer Runde:** Datei-Änderungen einer Antwort laufen jetzt vor Befehlen und Lesen. `edit_file` und `run_command` (Test) passen also in eine Antwort. Verteilt ein Modell beides auf zwei Runden, bekommt es einmal den Hinweis.
-- **Keine doppelten Prüfungen:** Catcoder lässt die betroffenen Tests nach der Abschlussmeldung selbst laufen, und das Modell erfährt das. Hat es nach seiner letzten Änderung schon grün getestet, läuft nichts doppelt.
-- **Live-Prüfung im Browser auch im Chat:** Geänderte Webseiten und Browser-Spiele öffnet Catcoder nach der Abschlussmeldung selbst: Konsole, bei Spielen eine Bedienprobe. Nur Probleme gehen ans Modell. Vorher klickte ein Modell sich durch 4–6 eigene Browser-Runden, im schlimmsten gemessenen Fall durch 51 Runden mit 31 doppelten Aufrufen und 937 000 Tokens, und das Spiel lief am Ende trotzdem nicht. Weil die Bedienprobe am Timing hängt, wiederholt Catcoder sie vor einer Fehlermeldung einmal. Klickt ein Modell beim Bauen einer Seite trotzdem Runde um Runde selbst (gemessen: 31 Klicks, 522 000 Tokens), erinnert Catcoder es nach 5 und nach 10 reinen Browser-Runden daran, dass die Prüfung danach automatisch kommt.
-- **Weniger Fehlversuche bei Werkzeug-Aufrufen:** Packt ein Modell weitere Parameter im XML-Stil in einen Text (`press\n<parameter=key>\narrowright`), teilt Catcoder sie richtig auf, statt mit einem Fehler eine Runde zu verlieren.
-- **Bench misst die vier Kennzahlen:** Werkzeug-Effizienz (beim ersten Mal richtig, doppelte Aufrufe), Overhead (feste Tokens je Anfrage und ihr Anteil), Runden je Aufgabe und Aufrufe je Runde, Erfolg und Zeit. Mit `--keep` bleiben die Projektordner zum Nachsehen erhalten.
+Grenze der Physik: Jedes Token von V4.1 Flash liest 6,6 GB dichte Gewichte (Attention, gemeinsame Experten) und 1,8 GB Experten. Über die 256 GB/s der Laptop-4070 und DDR5 sind das selbst mit unbegrenztem Arbeitsspeicher höchstens ~13 Tokens/s; 50 Tokens/s brauchen das ganze Modell im Grafikspeicher mehrerer großer Karten. Auf einem Laptop ist V4.1 Flash damit etwas für Aufträge im Hintergrund (Dauerlauf, über Nacht).

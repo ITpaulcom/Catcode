@@ -1,23 +1,32 @@
-## Änderungen 5.51.0 – Dreistufen-Speicher: Riesen-MoE wie DeepSeek V4.1 Flash aus Grafikkarte + Arbeitsspeicher + SSD
+## Änderungen 5.52.0 – Turbo-Ausgabe: MTP, Selbstabstimmung auf dem eigenen PC, große Modelle, die flüssig bleiben
 
-Modelle, die größer sind als Arbeitsspeicher und Grafikkarte zusammen, laufen jetzt lokal (`lib/speicherplan.mjs`):
+Wie schnell ein Modell schreibt, hängt daran, wie viele Gewichte es **je Token** lesen muss – nicht an seiner Gesamtgröße. 50 Tokens/s heißt 20 ms je Token: Eine Grafikkarte mit 256 GB/s (RTX 4070 Laptop) schafft in der Zeit rund 4 GB, zweikanaliges DDR5 rund 1 GB. Der Ausgabekopf allein ist nur ein Bruchteil davon (bei DeepSeek V4.1 Flash 0,5 von 8,4 GB je Token) – „die Grafikkarte nur für die Ausgabe“ beschleunigt deshalb nichts; jedes Token braucht den ganzen Durchlauf. Flüssig laufen große Modelle, wenn sie **wenig je Token** anfassen (MoE mit kleinem aktivem Anteil), ganz in Arbeitsspeicher + Grafikspeicher liegen und je Durchlauf mehr als ein Token liefern. Dafür:
 
-- **Grafikkarte = Beschleuniger** für alles, was jedes Token braucht: Attention, gemeinsame Experten, Router, Ausgabekopf, KV-Cache – dazu so viele ganze Experten-Schichten, wie noch passen (llama.cpp `--fit`).
-- **Arbeitsspeicher** hält die häufig gebrauchten Experten; gerechnet wird nur auf den **Leistungskernen** (unter Windows nimmt llama.cpp sonst alle Kerne – beim i9-13900HX 24 statt 8; E-Kerne bremsen den Gleichschritt). Erkannt über die CPU-Sets von Windows bzw. sysfs unter Linux, Threads fest auf je einen P-Kern (`-t 8 -C 0x5555 --cpu-strict 1`).
-- **SSD**: das Modell bleibt eingeblendet (mmap), das Betriebssystem lädt seltene Experten nach. Die Engram-Tabelle von DeepSeek V4.1 (110–135 GB) liest llama.cpp zeilenweise von der SSD (`--lazy-mode on`). Ohne Umpacken (`--no-repack` – sonst kopiert llama.cpp die Gewichte in eigenen Speicher: gemessen vom System beendet) und ohne Aufwärmen mit allen Experten (`--no-warmup` – das läse beim Start das ganze Modell). Großer Vorlauf-Block (`-ub 4096`): die Experten wandern je Block einmal zur Grafikkarte.
-- **Vorher sehen, was einen erwartet:** Catcoder liest den Aufbau aus der Tensor-Tabelle der GGUF-Datei (auch aufgeteilte Modelle und Köpfe von Hugging Face, ohne Download) und schätzt das Tempo aus Bytes je Token und Bandbreite je Stufe (Grafikspeicher je Karte, RAM-Takt, SSD-Lesetest). Die Modellliste zeigt die Schätzung je Modell, die Modellhost-Karte den Speicherplan.
-- **DeepSeek V4.1 Flash** in der Modellliste (Unsloth, MIT): UD-Q2_K_XL (335 GB, Benchmark-Mittel 87,5 statt 87,7 bei Q8 – praktisch Originalqualität) und UD-IQ1_S (233 GB, 83,5). Aufgeteilte Modelle laden alle Teile mit Prüfsumme, Platz auf der SSD wird vorher geprüft. Die eingebaute llama.cpp-Fassung (b12079) kennt `deepseek41`, Engram und das DSML-Werkzeugformat.
-- Kürzeres Nachdenken bei Modellen von der SSD (Denk-Budget 320 statt 768 Tokens), damit eine Runde nicht minutenlang nur denkt.
+- **MTP-Turbo:** Modelle mit eingebautem MTP-Kopf (Qwen3.5/3.6/3.8, Gemma 4 …) sagen je Durchlauf mehrere Ausgabe-Tokens voraus und prüfen sie gleich mit – gleiches Ergebnis, mehr Tokens je Durchlauf (`--spec-type draft-mtp`, zusätzlich zum n-gram-Turbo). Catcoder erkennt den Kopf im Modell oder eine Beiwagen-Datei (`mtp-….gguf`) und schaltet MTP mit Grafikkarte ein. Startet es damit nicht, lädt das Modell ohne.
+- **Auf diesen PC abstimmen** (Einstellungen → Eigene Modelle): lädt das Modell in mehreren Einstellungen – Standard, MTP mit 1–3 Entwurfs-Tokens, Experten-Cache auf der Grafikkarte (`--moe-cache-mib`: alle Experten im Arbeitsspeicher, die häufig gebrauchten zusätzlich im Grafikspeicher) –, misst jede mit Text und Code auf dem Gerät und behält die schnellste. Sie gilt für dieses Modell auf dieser Hardware und greift bei jedem Laden; stürzt es damit ab, fällt Catcoder auf den Standard zurück. Dazu die Messung „mehrere Agents gleichzeitig“.
+- **Große Modelle, die flüssig bleiben:** neu in der Liste Qwen3.6 35B (A3B) mit MTP (35 Mrd. Parameter, je Token rechnen 3 Mrd.; Apache-2.0; SWE-bench Verified 73,4 laut Hersteller). Mit erkannter Hardware empfiehlt Catcoder das **stärkste Modell, das geschätzt flüssig läuft** (≥ 25 Tokens/s ohne Turbo), statt des kleinsten, das ganz auf die Grafikkarte passt.
+- **Schätzung rechnet mit der CPU:** nicht nur Speicherbandbreite, auch Kerne × Takt (gemessen 4,1 GB/s quantisierte Gewichte je Kern bei 2,1 GHz).
 
-Gemessen (echter llama-server b12079, MoE mit 820 MB, Arbeitsspeicher per cgroup auf 400 MB begrenzt): läuft mit denselben Antworten, 3,1–3,5 Tokens/s statt 40–46 ohne Grenze; ohne `--no-repack` vom System beendet. Daraus kalibriert: Nachladen über mmap erreicht ≈ 15 % der Lese-Rate der SSD.
+Gemessen (echter llama-server b12079, Qwen3.5 2B mit MTP-Kopf, 4 CPU-Kerne ohne Grafikkarte, Tokens/s Text / Code):
 
-**Was das für einen Dell G16 7630 heißt** (RTX 4070 Laptop 8 GB / 256 GB/s, 32 GB DDR5-4800, i9-13900HX; Aufbau aus den echten GGUF-Köpfen):
-
-| Modell | Speicherplan | geschätzt |
+| Einstellung | Text | Code |
 |---|---|---|
-| DeepSeek V4.1 Flash UD-IQ1_S (233 GB) | Grafikkarte 6,4 GB · RAM 26 GB · SSD 200 GB | 0,4–1,5 Tokens/s, Vorlauf ~1 min je 4 000 neue Tokens |
-| DeepSeek V4.1 Flash UD-Q2_K_XL (335 GB) | Grafikkarte 6,4 GB · RAM 26 GB · SSD 300 GB | 0,2–0,8 Tokens/s |
-| gpt-oss 20B | Grafikkarte 6,1 GB · RAM 5,5 GB | 37–41 Tokens/s |
-| Qwen3.5 9B | ganz auf der Grafikkarte | ~36 Tokens/s |
+| ohne Turbo | 12,4 | 13,4 |
+| n-gram-Turbo (Standard) | 13,7 | 34,5 |
+| MTP allein, 1 / 2 / 3 Entwurfs-Tokens | 10,9 / 10,1 / 8,9 | 11,8 / 12,1 / 11,0 |
+| MTP 2 + n-gram | 15,4 | 31,2 |
+| 4 Agents gleichzeitig (Standard) | zusammen 27–28,5 statt 12–14 | |
 
-Grenze der Physik: Jedes Token von V4.1 Flash liest 6,6 GB dichte Gewichte (Attention, gemeinsame Experten) und 1,8 GB Experten. Über die 256 GB/s der Laptop-4070 und DDR5 sind das selbst mit unbegrenztem Arbeitsspeicher höchstens ~13 Tokens/s; 50 Tokens/s brauchen das ganze Modell im Grafikspeicher mehrerer großer Karten. Auf einem Laptop ist V4.1 Flash damit etwas für Aufträge im Hintergrund (Dauerlauf, über Nacht).
+Auf der CPU kostet jeder Entwurf volle Rechenzeit, MTP allein ist dort ein Verlust – die Abstimmung wählt dann den Standard. Auf einer Grafikkarte sind zusätzliche Positionen je Durchlauf fast gratis; die Hersteller nennen 1,15–1,25× für MoE und bis 1,7× für dichte Modelle. Was auf einem Gerät gewinnt, zeigt nur die Messung dort – deshalb die Abstimmung.
+
+**Dell G16 7630** (RTX 4070 Laptop 8 GB, 32 GB DDR5, i9-13900HX), geschätzt ohne Turbo aus den echten GGUF-Köpfen:
+
+| Modell | je Token gelesen | geschätzt |
+|---|---|---|
+| Qwen3.6 35B-A3B (Q4_K_S, 21 GB) | 2,1 GB dicht + 0,6 GB Experten | 31–35 Tokens/s; mit MTP und bei Code mehr |
+| gpt-oss 20B | 1,0 + 1,3 GB | 31–37 |
+| Qwen3.5 9B (ganz auf der Grafikkarte) | 5,1 GB | ~36 |
+| Qwen3.8-Flash-Next 125B-A6B (UD-IQ1_S, 66 GB)¹ | 3,8 + 0,65 GB | 5–13 (17 % der Experten auf der SSD); mit 64 GB RAM 22–24 |
+| DeepSeek V4.1 Flash 552B (UD-IQ1_S) | 6,6 + 1,8 GB | 0,4–1,5 |
+
+¹ über die Modellsuche ladbar, nicht in der eingebauten Liste: Die Qwen Community License 1.0 verlangt für Anbieter von KI-Coding-Assistenten eine eigene Lizenz (private und interne Nutzung ist frei).
